@@ -7,10 +7,29 @@ import { collections, toObjectId } from "@/lib/mongodb";
 // RSS FEED ACTIONS
 // ============================================
 
+export interface RssFeedWithCount {
+  id: string;
+  userId: string;
+  url: string;
+  title?: string | null;
+  description?: string | null;
+  link?: string | null;
+  imageUrl?: string | null;
+  language?: string | null;
+  lastFetched?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  _count: {
+    articles: number;
+  };
+}
+
 /**
  * Fetches all RSS feeds for a specific user with article counts
  */
-export async function getRssFeedsByUserId(userId: string) {
+export async function getRssFeedsByUserId(
+  userId: string
+): Promise<RssFeedWithCount[]> {
   return wrapDatabaseOperation(async () => {
     const feeds = await collections
       .rssFeeds()
@@ -41,7 +60,7 @@ export async function getRssFeedsByUserId(userId: string) {
       })
     );
 
-    return feedsWithCounts;
+    return feedsWithCounts as RssFeedWithCount[];
   }, "fetch RSS feeds");
 }
 
@@ -80,7 +99,7 @@ export async function deleteRssFeed(feedId: string) {
     // Remove feedId from sourceFeedIds arrays
     await articlesCollection.updateMany(
       { sourceFeedIds: feedObjectId },
-      { $pull: { sourceFeedIds: feedObjectId } }
+      { $pull: { sourceFeedIds: feedObjectId } } as Record<string, unknown>
     );
 
     // Delete articles that have no more feed references (empty sourceFeedIds)

@@ -10,7 +10,7 @@ import {
 import { NewsletterForm } from "./newsletter-form"  ;
 
 export async function NewsletterGenerator() {
-  const { userId } = await auth();
+  const { userId } = await auth() ;
   const user = await upsertUserFromClerk(userId!);
   const feeds = await getRssFeedsByUserId(user.id);
 
@@ -31,7 +31,7 @@ export async function NewsletterGenerator() {
     <NewsletterForm
       feeds={feeds.map((f) => ({
         id: f.id,
-        title: f.title,
+        title: f.title ?? null,
         url: f.url,
       }))}
     />
