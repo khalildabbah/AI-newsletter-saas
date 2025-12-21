@@ -7,7 +7,8 @@ import { checkIsProUser, getCurrentUser } from "@/lib/auth/helpers";
 import {
   buildArticleSummaries,
   buildNewsletterPrompt,
-} from "@/lib/newsletter/prompt-builder";
+} from "@/lib/newsletter/prompt-builder" ;
+import type { ArticleForPrompt } from "@/lib/newsletter/types";
 import { prepareFeedsAndArticles } from "@/lib/rss/feed-refresh";
 import { createNewsletter } from "./newsletter";
 import { getUserSettingsByUserId } from "./user-settings";
@@ -15,6 +16,27 @@ import { getUserSettingsByUserId } from "./user-settings";
 // ============================================
 // NEWSLETTER GENERATION ACTIONS
 // ============================================
+
+/**
+ * Article structure returned from getArticlesByFeedsAndDateRange
+ */
+interface ArticleFromDB {
+  id: string;
+  feedId: string;
+  sourceFeedIds: string[];
+  sourceCount: number;
+  feed: {
+    id: string;
+    title: string | null;
+    url: string;
+  } | null;
+  title: string;
+  link: string;
+  pubDate: Date;
+  summary?: string | null;
+  content?: string | null;
+  [key: string]: unknown;
+}
 
 /**
  * Newsletter generation result schema
@@ -58,10 +80,22 @@ export async function generateNewsletterStream(params: {
   const settings = await getUserSettingsByUserId(user.id);
 
   // Fetch and refresh articles from RSS feeds
-  const articles = await prepareFeedsAndArticles(params);
+  const articles = (await prepareFeedsAndArticles(params)) as ArticleFromDB[];
+
+  // Map articles to ArticleForPrompt format
+  const articlesForPrompt: ArticleForPrompt[] = articles.map((article) => ({
+    title: article.title,
+    link: article.link,
+    pubDate: article.pubDate,
+    summary: article.summary ?? null,
+    content: article.content ?? null,
+    feed: {
+      title: article.feed?.title ?? null,
+    },
+  }));
 
   // Build the AI prompt with articles and settings
-  const articleSummaries = buildArticleSummaries(articles);
+  const articleSummaries = buildArticleSummaries(articlesForPrompt);
   const prompt = buildNewsletterPrompt({
     startDate: params.startDate,
     endDate: params.endDate,
