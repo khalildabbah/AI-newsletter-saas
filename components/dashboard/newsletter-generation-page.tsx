@@ -41,6 +41,8 @@ export function NewsletterGenerationPage() {
   const searchParams = useSearchParams();
   const hasStartedRef = React.useRef(false);
   const [articlesCount, setArticlesCount] = React.useState(0);
+  const [hasTimedOut, setHasTimedOut] = React.useState(false);
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Parse generation parameters from URL query string
   const feedIds = searchParams.get("feedIds");
@@ -69,13 +71,157 @@ export function NewsletterGenerationPage() {
   }
 
   // Use AI SDK's useObject hook for streaming
-  const { object, submit, isLoading } = useObject({
+  const { object, submit, isLoading, error } = useObject({
     api: "/api/newsletter/generate-stream",
     schema: NewsletterSchema,
+    onError: (error) => {
+      console.error("[Frontend] useObject error callback triggered");
+      console.error("[Frontend] Error type:", typeof error);
+      console.error("[Frontend] Error value:", error);
+      if (error instanceof Error) {
+        console.error("[Frontend] Error message:", error.message);
+        console.error("[Frontend] Error stack:", error.stack);
+      }
+      // This will be handled by the error useEffect below
+    },
   });
-
-  // Type assertion for the newsletter object
-  const newsletter = object as Partial<NewsletterObject> | undefined;
+  
+  // Extract the actual newsletter data from the object
+  // The useObject hook may return a schema structure with { type: "object", properties: {...} }
+  // or the direct object, so we need to handle both cases
+  const newsletter = React.useMemo(() => {
+    if (!object) return undefined;
+    
+    // Check if object has the schema structure (type + properties)
+    if ('type' in object && 'properties' in object && typeof object.properties === 'object' && object.properties !== null) {
+      return object.properties as Partial<NewsletterObject>;
+    }
+    
+    // Otherwise, assume it's the direct object
+    return object as Partial<NewsletterObject>;
+  }, [object]);
+  
+  // Debug: Log state changes
+  React.useEffect(() => {
+    const keys = object ? Object.keys(object) : null;
+    const objectValues = object ? Object.entries(object).map(([key, value]) => ({
+      key,
+      type: typeof value,
+      hasValue: !!value,
+      length: Array.isArray(value) ? value.length : typeof value === 'string' ? value.length : null,
+    })) : null;
+    
+    const newsletterKeys = newsletter ? Object.keys(newsletter) : null;
+    
+    console.log("[Frontend] State update:", {
+      isLoading,
+      hasObject: !!object,
+      hasNewsletter: !!newsletter,
+      hasBody: !!newsletter?.body,
+      hasError: !!error,
+      objectKeys: keys,
+      newsletterKeys: newsletterKeys,
+      objectDetails: objectValues,
+      fullObject: object ? JSON.stringify(object, null, 2) : null,
+      extractedNewsletter: newsletter ? JSON.stringify(newsletter, null, 2) : null,
+    });
+  }, [isLoading, object, newsletter, error]);
+  
+  // Set up timeout to detect stuck generation (3 minutes)
+  React.useEffect(() => {
+    if (isLoading && !hasTimedOut) {
+      // Clear any existing timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      
+      // Set new timeout
+      timeoutRef.current = setTimeout(() => {
+        if (isLoading && !newsletter?.body) {
+          console.error("Newsletter generation timed out after 3 minutes");
+          setHasTimedOut(true);
+          toast.error(
+            "Generation is taking too long. Please try again or check your OpenAI API configuration.",
+            { duration: 10000 }
+          );
+        }
+      }, 3 * 60 * 1000); // 3 minutes
+    } else {
+      // Clear timeout when not loading
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    }
+    
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [isLoading, newsletter?.body, hasTimedOut]);
+  
+  // Handle errors from AI generation
+  React.useEffect(() => {
+    if (error) {
+      console.error("Newsletter generation error:", error);
+      
+      // Clear timeout on error
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      
+      let errorMessage = "Failed to generate newsletter";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === "string") {
+        errorMessage = error;
+      } else if (error && typeof error === "object") {
+        const errorObj = error as Record<string, unknown>;
+        if ("message" in errorObj && typeof errorObj.message === "string") {
+          errorMessage = errorObj.message;
+        } else {
+          errorMessage = JSON.stringify(error);
+        }
+      }
+      
+      // Check for specific OpenAI errors
+      if (errorMessage.includes("API key") || errorMessage.includes("authentication")) {
+        toast.error(
+          "OpenAI API key error. Please check your API key configuration.",
+          { duration: 10000 }
+        );
+      } else {
+        toast.error(`Generation failed: ${errorMessage}`, { duration: 8000 });
+      }
+    }
+  }, [error]);
+  
+  // Log when generation completes or gets stuck
+  React.useEffect(() => {
+    if (isLoading) {
+      console.log("[Frontend] Newsletter generation started...");
+    } else if (!isLoading && newsletter?.body) {
+      console.log("[Frontend] Newsletter generation completed successfully");
+    } else if (!isLoading && !newsletter?.body && !error && hasStartedRef.current) {
+      console.warn("[Frontend] Generation stopped but no newsletter received. This might indicate an error.");
+      console.warn("[Frontend] Object state:", {
+        object: object,
+        objectKeys: object ? Object.keys(object) : null,
+        newsletterKeys: newsletter ? Object.keys(newsletter) : null,
+        hasBody: !!newsletter?.body,
+      });
+      
+      // Show user-friendly error if object exists but body is missing
+      if (object && !newsletter?.body) {
+        toast.error(
+          "Newsletter generation completed but body is missing. The AI may have failed to generate the newsletter content. Please try again.",
+          { duration: 10000 }
+        );
+      }
+    }
+  }, [isLoading, newsletter?.body, error, object, newsletter]);
 
   // Auto-start generation with pre-flight metadata check
   React.useEffect(() => {
@@ -211,7 +357,7 @@ export function NewsletterGenerationPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 dark:from-black dark:to-gray-950">
-      <div className="container mx-auto py-12 px-6 lg:px-8 space-y-8">
+      <div className="container mx-auto py-12 px-6 lg:px-8 space-y-8 max-w-[1600px]">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -260,8 +406,51 @@ export function NewsletterGenerationPage() {
           </div>
         )}
 
+        {/* Show error if object exists but body is missing after completion */}
+        {!isLoading && object && !newsletter?.body && !error && (
+          <Card className="transition-all hover:shadow-lg border-destructive">
+            <CardHeader>
+              <CardTitle className="text-2xl text-destructive">
+                Generation Incomplete
+              </CardTitle>
+              <CardDescription className="text-base">
+                The newsletter generation completed but the body content is missing. This may indicate an issue with the AI response.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                <p>Raw object keys: {object ? Object.keys(object).join(", ") : "none"}</p>
+                {newsletter && (
+                  <p>Newsletter keys: {Object.keys(newsletter).join(", ")}</p>
+                )}
+                <p>This might be a temporary issue. Please try generating again.</p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    hasStartedRef.current = false;
+                    submit(params);
+                  }}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Retry Generation
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleBackToDashboard}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Dashboard
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+
         {/* If generation hasn't started yet */}
-        {!isLoading && !newsletter?.body && (
+        {!isLoading && !newsletter?.body && !error && (
           <Card className="transition-all hover:shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl">Preparing to Generate</CardTitle>

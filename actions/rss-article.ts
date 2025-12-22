@@ -133,6 +133,29 @@ export async function getArticlesByFeedsAndDateRange(
     const articlesCollection = collections.rssArticles();
     const feedsCollection = collections.rssFeeds();
 
+    // Debug logging
+    if (process.env.NODE_ENV === "development") {
+      console.log("Querying articles with:", {
+        feedIds: feedIds.length,
+        feedObjectIds: feedObjectIds.length,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        limit,
+      });
+    }
+
+    // First, check if any articles exist for these feeds (without date filter)
+    const totalArticlesForFeeds = await articlesCollection.countDocuments({
+      $or: [
+        { feedId: { $in: feedObjectIds } },
+        { sourceFeedIds: { $in: feedObjectIds } },
+      ],
+    });
+
+    if (process.env.NODE_ENV === "development") {
+      console.log(`Total articles for feeds (no date filter): ${totalArticlesForFeeds}`);
+    }
+
     // Find articles matching the criteria
     const articles = await articlesCollection
       .find({
@@ -148,6 +171,41 @@ export async function getArticlesByFeedsAndDateRange(
       .sort({ pubDate: -1 })
       .limit(limit)
       .toArray();
+
+    if (process.env.NODE_ENV === "development") {
+      console.log(`Articles found in date range: ${articles.length}`);
+      if (articles.length === 0 && totalArticlesForFeeds > 0) {
+        // Get date range of existing articles to help debug
+        const dateRange = await articlesCollection
+          .aggregate([
+            {
+              $match: {
+                $or: [
+                  { feedId: { $in: feedObjectIds } },
+                  { sourceFeedIds: { $in: feedObjectIds } },
+                ],
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                minDate: { $min: "$pubDate" },
+                maxDate: { $max: "$pubDate" },
+              },
+            },
+          ])
+          .toArray();
+        
+        if (dateRange.length > 0) {
+          console.log("Existing articles date range:", {
+            minDate: dateRange[0].minDate?.toISOString(),
+            maxDate: dateRange[0].maxDate?.toISOString(),
+            requestedStart: startDate.toISOString(),
+            requestedEnd: endDate.toISOString(),
+          });
+        }
+      }
+    }
 
     // Get feed information for each article
     const articlesWithFeeds = await Promise.all(

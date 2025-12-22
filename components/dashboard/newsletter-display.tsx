@@ -130,7 +130,7 @@ export function NewsletterDisplay({
       </CardHeader>
       <CardContent>
         {/* Single unified responsive grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[300px_1fr_300px] gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[380px_1fr_380px] gap-8">
           {/* Title Options */}
           <div className="xl:row-start-1">
             <NewsletterSection
@@ -197,7 +197,7 @@ export function NewsletterDisplay({
                 )}
               </Button>
             </div>
-            <div className="border rounded-lg p-6 prose prose-sm max-w-none dark:prose-invert min-h-[400px]">
+            <div className="border rounded-lg p-6 prose prose-lg max-w-none dark:prose-invert min-h-[400px]">
               {newsletter.body ? (
                 <div className="animate-in fade-in slide-in-from-left-2 duration-300">
                   <ReactMarkdown>{newsletter.body}</ReactMarkdown>

@@ -1,4 +1,4 @@
-import type { UserSettings } from "@prisma/client";
+import type { UserSettings } from "@/actions/user-settings";
 
 // ============================================
 // NEWSLETTER-SPECIFIC TYPE DEFINITIONS

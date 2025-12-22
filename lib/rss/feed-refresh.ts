@@ -137,7 +137,20 @@ export async function prepareFeedsAndArticles(params: PrepareFeedsParams) {
 
   // Ensure we have articles to work with
   if (articles.length === 0) {
-    throw new Error("No articles found for the selected feeds and date range");
+    // Provide more helpful error message
+    const errorMessage = `No articles found for the selected feeds and date range.
+      
+Possible reasons:
+1. The feeds haven't been fetched yet - try refreshing the feeds first
+2. The date range (${params.startDate.toISOString()} to ${params.endDate.toISOString()}) doesn't match any articles
+3. The feeds may not have published any articles in this time period
+
+Try:
+- Expanding the date range
+- Refreshing the feeds manually
+- Checking if the feeds have any articles at all`;
+    
+    throw new Error(errorMessage);
   }
 
   return articles;

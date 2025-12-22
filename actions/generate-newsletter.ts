@@ -107,7 +107,7 @@ export async function generateNewsletterStream(params: {
 
   // Generate newsletter using AI with streaming for real-time updates
   const { partialObjectStream } = await streamObject({
-    model: openai("gpt-4o"),
+    model: openai(process.env.OPENAI_MODEL || "gpt-4o-mini"), // gpt-4o-mini: best cost/quality balance for newsletters
     schema: NewsletterSchema,
     prompt,
   });
