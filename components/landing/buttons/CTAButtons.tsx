@@ -13,7 +13,7 @@ async function CTAButtons() {
     <>
       {/* Signed out users */}
       <SignedOut>
-        <SignInButton mode="modal" forceRedirectUrl="/#pricing">
+        <SignInButton mode="modal" forceRedirectUrl="/auth/redirect">
           <Button size="lg" className="w-full sm:w-auto">
             Get Started <ArrowRight className="ml-2 size-4" />
           </Button>

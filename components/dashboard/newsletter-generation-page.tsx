@@ -6,11 +6,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { saveGeneratedNewsletter } from "@/actions/generate-newsletter";
 import {
   type GeneratedNewsletter,
   NewsletterSchema,
-  saveGeneratedNewsletter,
-} from "@/actions/generate-newsletter";
+} from "@/lib/newsletter/schema";
 import { Button } from "@/components/ui/button";
 import {
   Card,

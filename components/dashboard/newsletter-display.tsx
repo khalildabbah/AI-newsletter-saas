@@ -5,7 +5,7 @@ import { Check, Copy, Download, Save } from "lucide-react";
 import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
-import type { GeneratedNewsletter } from "@/actions/generate-newsletter" ;
+import type { GeneratedNewsletter } from "@/lib/newsletter/schema";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -130,7 +130,7 @@ export function NewsletterDisplay({
       </CardHeader>
       <CardContent>
         {/* Single unified responsive grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[380px_1fr_380px] gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[280px_2fr_280px] gap-8">
           {/* Title Options */}
           <div className="xl:row-start-1">
             <NewsletterSection

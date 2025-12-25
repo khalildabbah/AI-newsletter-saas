@@ -2,12 +2,15 @@
 
 import { openai } from "@ai-sdk/openai" ; 
 import { streamObject } from "ai";
-import { z } from "zod";
 import { checkIsProUser, getCurrentUser } from "@/lib/auth/helpers";
 import {
   buildArticleSummaries,
   buildNewsletterPrompt,
 } from "@/lib/newsletter/prompt-builder" ;
+import {
+  NewsletterSchema,
+  type GeneratedNewsletter,
+} from "@/lib/newsletter/schema";
 import type { ArticleForPrompt } from "@/lib/newsletter/types";
 import { prepareFeedsAndArticles } from "@/lib/rss/feed-refresh";
 import { createNewsletter } from "./newsletter";
@@ -38,21 +41,6 @@ interface ArticleFromDB {
   [key: string]: unknown;
 }
 
-/**
- * Newsletter generation result schema
- *
- * Defines the structure of AI-generated newsletters.
- * The AI SDK validates responses against this schema.
- */
-export const NewsletterSchema = z.object({
-  suggestedTitles: z.array(z.string()).length(5),
-  suggestedSubjectLines: z.array(z.string()).length(5),
-  body: z.string(),
-  topAnnouncements: z.array(z.string()).length(5),
-  additionalInfo: z.string().optional(),
-});
-
-export type GeneratedNewsletter = z.infer<typeof NewsletterSchema>;
 
 /**
  * Generates a newsletter with AI streaming
