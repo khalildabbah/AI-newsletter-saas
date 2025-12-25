@@ -6,6 +6,21 @@ A production-ready SaaS application for automatically generating professional ne
 
 This application transforms the time-consuming process of newsletter creation into an automated, AI-powered workflow. Users subscribe to RSS feeds, and the system automatically curates content and generates complete newsletters with titles, subject lines, and formatted content ready for distribution.
 
+### Screenshots
+
+<div align="center">
+
+#### 🏠 Landing Page
+<img src="resources/landing-page.png" alt="Landing Page" width="90%"/>
+
+#### 📊 Dashboard  
+<img src="resources/Dashboard.png" alt="Dashboard" width="90%"/>
+
+#### ✨ Newsletter Generation
+<img src="resources/newsletter-generation.png" alt="Newsletter Generation" width="90%"/>
+
+</div>
+
 ### Key Value Proposition
 
 - **Time Savings**: Generate complete newsletters in seconds instead of hours
